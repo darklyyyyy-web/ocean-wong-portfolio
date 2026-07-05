@@ -484,53 +484,53 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
             <section className="admin-card">
               <div className="admin-card-header">
                 <h2>页面文案</h2>
-                <p>这里控制作品页、分类页、联系页、关于页顶部的标题和说明文字。</p>
+                <p>这部分是在改前台各个页面顶部显示的文字，不是相册内容本身。下面每个输入框都对应网站上的一个标题或说明。</p>
               </div>
               <div className="admin-form admin-form-grid">
                 <label>
                   作品页小标题
                   <small>显示在 `/projects` 页面顶部，例如 Portfolio。</small>
-                  <input value={siteContent.pages.projectsEyebrow} onChange={(event) => updateSiteSection("pages", "projectsEyebrow", event.target.value)} />
+                  <input value={siteContent.pages.projectsEyebrow} onChange={(event) => updateSiteSection("pages", "projectsEyebrow", event.target.value)} placeholder="例如：Portfolio" />
                 </label>
                 <label>
                   作品页主标题
                   <small>显示在 `/projects` 页面顶部的大标题。</small>
-                  <input value={siteContent.pages.projectsTitle} onChange={(event) => updateSiteSection("pages", "projectsTitle", event.target.value)} />
+                  <input value={siteContent.pages.projectsTitle} onChange={(event) => updateSiteSection("pages", "projectsTitle", event.target.value)} placeholder="例如：拍摄类型" />
                 </label>
                 <label className="admin-form-span-2">
                   作品页说明
                   <small>显示在 `/projects` 页面顶部标题下方。</small>
-                  <textarea rows="3" value={siteContent.pages.projectsIntro} onChange={(event) => updateSiteSection("pages", "projectsIntro", event.target.value)} />
+                  <textarea rows="3" value={siteContent.pages.projectsIntro} onChange={(event) => updateSiteSection("pages", "projectsIntro", event.target.value)} placeholder="例如：先选择拍摄大类，再进入每个具体项目。" />
                 </label>
                 <label>
                   分类页小标题
                   <small>显示在每个分类详情页顶部，例如 Gallery。</small>
-                  <input value={siteContent.pages.categoryEyebrow} onChange={(event) => updateSiteSection("pages", "categoryEyebrow", event.target.value)} />
+                  <input value={siteContent.pages.categoryEyebrow} onChange={(event) => updateSiteSection("pages", "categoryEyebrow", event.target.value)} placeholder="例如：Gallery" />
                 </label>
                 <label>
                   联系页小标题
                   <small>显示在 `/contact` 页面顶部。</small>
-                  <input value={siteContent.pages.contactEyebrow} onChange={(event) => updateSiteSection("pages", "contactEyebrow", event.target.value)} />
+                  <input value={siteContent.pages.contactEyebrow} onChange={(event) => updateSiteSection("pages", "contactEyebrow", event.target.value)} placeholder="例如：Contact" />
                 </label>
                 <label className="admin-form-span-2">
                   分类页说明
                   <small>显示在每个分类详情页顶部标题下方。</small>
-                  <textarea rows="3" value={siteContent.pages.categoryIntro} onChange={(event) => updateSiteSection("pages", "categoryIntro", event.target.value)} />
+                  <textarea rows="3" value={siteContent.pages.categoryIntro} onChange={(event) => updateSiteSection("pages", "categoryIntro", event.target.value)} placeholder="例如：这个大类下的照片会直接显示在这里。" />
                 </label>
                 <label>
                   联系页标题
                   <small>显示在 `/contact` 页的大标题。</small>
-                  <input value={siteContent.pages.contactTitle} onChange={(event) => updateSiteSection("pages", "contactTitle", event.target.value)} />
+                  <input value={siteContent.pages.contactTitle} onChange={(event) => updateSiteSection("pages", "contactTitle", event.target.value)} placeholder="例如：联系我" />
                 </label>
                 <label>
                   关于页小标题
                   <small>显示在 `/about` 页面顶部。</small>
-                  <input value={siteContent.pages.aboutEyebrow} onChange={(event) => updateSiteSection("pages", "aboutEyebrow", event.target.value)} />
+                  <input value={siteContent.pages.aboutEyebrow} onChange={(event) => updateSiteSection("pages", "aboutEyebrow", event.target.value)} placeholder="例如：About" />
                 </label>
                 <label className="admin-form-span-2">
                   联系页说明
                   <small>显示在 `/contact` 页面标题下方。</small>
-                  <textarea rows="3" value={siteContent.pages.contactIntro} onChange={(event) => updateSiteSection("pages", "contactIntro", event.target.value)} />
+                  <textarea rows="3" value={siteContent.pages.contactIntro} onChange={(event) => updateSiteSection("pages", "contactIntro", event.target.value)} placeholder="例如：欢迎咨询婚礼、活动、商业、产品或运动拍摄。" />
                 </label>
               </div>
             </section>

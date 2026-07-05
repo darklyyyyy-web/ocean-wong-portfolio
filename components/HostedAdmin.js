@@ -175,6 +175,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   const [loading, setLoading] = useState(!initialSiteContent);
   const activeProject = useMemo(() => projects.find((project) => project.id === activeProjectId), [projects, activeProjectId]);
   const activeProjectIsLocal = activeProject?.source === "local";
+  const activeProjectIsDraft = isDraftProject(activeProject);
   const canSyncFromWebsite = Boolean(activeProject?.localSourceAvailable);
   const projectSummary = useMemo(() => summarizeProjects(projects), [projects]);
   const totalImageCount = useMemo(() => projects.reduce((total, project) => total + (project.images?.length || 0), 0), [projects]);
@@ -879,7 +880,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
             <p className="admin-note">导入完成后，你就可以在这里直接上传新图、删图、换封面和调整顺序。</p>
           )}
 
-          {isDraftProject(activeProject) ? (
+          {activeProjectIsDraft ? (
             <p className="admin-note">这个案例还是草稿，先保存一次，下面的图片库和删除功能才会生效。</p>
           ) : null}
 
@@ -889,9 +890,16 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
             </div>
           ) : null}
 
-          {!activeProjectIsLocal && activeProject.images.length > 0 ? (
-            <div className="admin-actions">
-              <button type="button" onClick={sortImagesByFilename}>按文件名排序</button>
+          <div className="admin-actions">
+            <button
+              type="button"
+              onClick={sortImagesByFilename}
+              disabled={activeProjectIsLocal || activeProjectIsDraft || activeProject.images.length === 0}
+            >
+              按文件名排序
+            </button>
+            {!activeProjectIsLocal && activeProject.images.length > 0 ? (
+              <>
               <button type="button" onClick={toggleSelectAllImages}>
                 {selectedImageIds.length === activeProject.images.length ? "取消全选" : "全选图片"}
               </button>
@@ -901,7 +909,15 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
               <button type="button" onClick={deleteSelectedImages} disabled={selectedImageIds.length === 0}>
                 删除已选 {selectedImageIds.length > 0 ? `${selectedImageIds.length} 张` : ""}
               </button>
-            </div>
+              </>
+            ) : null}
+          </div>
+          {activeProjectIsLocal ? (
+            <p className="admin-note">先导入这个案例到线上后台，之后就可以使用“按文件名排序”。</p>
+          ) : activeProjectIsDraft ? (
+            <p className="admin-note">先保存这个案例，之后就可以使用“按文件名排序”。</p>
+          ) : activeProject.images.length === 0 ? (
+            <p className="admin-note">先上传至少一张图片，之后就可以使用“按文件名排序”。</p>
           ) : null}
 
           <div className="admin-library">

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
+const uploadBatchSize = 8;
+
 function emptySiteContent() {
   return {
     meta: { title: "", description: "" },
@@ -88,6 +90,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   const [projectStatus, setProjectStatus] = useState(
     initialStatus || (initialSiteContent ? createProjectStatus(initialProjects) : "正在读取相册...")
   );
+  const [selectedImageIds, setSelectedImageIds] = useState([]);
   const [loading, setLoading] = useState(!initialSiteContent);
   const activeProject = useMemo(() => projects.find((project) => project.id === activeProjectId), [projects, activeProjectId]);
   const activeProjectIsLocal = activeProject?.source === "local";
@@ -150,6 +153,10 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
       setActiveProjectId(projects[0].id);
     }
   }, [activeProjectId, projects]);
+
+  useEffect(() => {
+    setSelectedImageIds([]);
+  }, [activeProjectId]);
 
   function updateSiteSection(section, field, value) {
     setSiteContent((current) => ({
@@ -317,26 +324,37 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
       return;
     }
 
-    setProjectStatus(`正在上传 ${files.length} 张图片...`);
-    const formData = new FormData();
-    formData.set("projectId", activeProjectId);
-    files.forEach((file) => formData.append("files", file));
+    let uploadedCount = 0;
 
-    const response = await fetch("/api/admin/cms/upload", {
-      method: "POST",
-      credentials: "include",
-      body: formData
-    });
+    for (let index = 0; index < files.length; index += uploadBatchSize) {
+      const batch = files.slice(index, index + uploadBatchSize);
+      setProjectStatus(`正在上传第 ${index + 1} 到 ${index + batch.length} 张，共 ${files.length} 张...`);
 
-    const data = await response.json();
-    if (!response.ok) {
-      setProjectStatus(data.error || "上传失败。");
-      return;
+      const formData = new FormData();
+      formData.set("projectId", activeProjectId);
+      batch.forEach((file) => formData.append("files", file));
+
+      const response = await fetch("/api/admin/cms/upload", {
+        method: "POST",
+        credentials: "include",
+        body: formData
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        await loadBootstrap();
+        setActiveProjectId(activeProjectId);
+        setProjectStatus(data.error || `上传在第 ${uploadedCount + 1} 张附近中断了，已成功上传 ${uploadedCount} 张。你可以继续补传剩余图片。`);
+        event.target.value = "";
+        return;
+      }
+
+      uploadedCount += batch.length;
     }
 
     await loadBootstrap();
     setActiveProjectId(activeProjectId);
-    setProjectStatus("图片已上传。");
+    setProjectStatus(`图片已上传，共完成 ${uploadedCount} 张。`);
     event.target.value = "";
   }
 
@@ -389,6 +407,35 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
     await loadBootstrap();
     setActiveProjectId(data.projectId);
     setProjectStatus("图片已删除。");
+  }
+
+  async function deleteSelectedImages() {
+    if (!activeProject || activeProject.source === "local" || selectedImageIds.length === 0) {
+      return;
+    }
+
+    setProjectStatus(`正在删除选中的 ${selectedImageIds.length} 张图片...`);
+    const response = await fetch("/api/admin/cms/image", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "deleteMany",
+        projectId: activeProject.id,
+        imageIds: selectedImageIds
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      setProjectStatus(data.error || "批量删除失败。");
+      return;
+    }
+
+    setSelectedImageIds([]);
+    await loadBootstrap();
+    setActiveProjectId(data.projectId);
+    setProjectStatus(`已删除 ${data.deletedCount || selectedImageIds.length} 张图片。`);
   }
 
   async function moveImage(imageId, direction) {
@@ -458,6 +505,24 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
     await loadBootstrap();
     setActiveProjectId(data.projectId);
     setProjectStatus("网站原图已经同步到线上后台，现在可以直接改封面、顺序、显示数量和文字了。");
+  }
+
+  function toggleImageSelection(imageId) {
+    setSelectedImageIds((current) => (
+      current.includes(imageId)
+        ? current.filter((id) => id !== imageId)
+        : [...current, imageId]
+    ));
+  }
+
+  function toggleSelectAllImages() {
+    if (!activeProject) return;
+    if (selectedImageIds.length === activeProject.images.length) {
+      setSelectedImageIds([]);
+      return;
+    }
+
+    setSelectedImageIds(activeProject.images.map((image) => image.id));
   }
 
   function addCategory() {
@@ -796,7 +861,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                       <div className="admin-upload-row">
                         <input type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" multiple onChange={uploadFiles} />
                       </div>
-                      <p className="admin-note">建议上传 JPG、PNG、WebP、AVIF 或 GIF，单张不超过 15MB。</p>
+                      <p className="admin-note">建议上传 JPG、PNG、WebP、AVIF 或 GIF，单张不超过 15MB。系统会自动分批上传，减少一次性失败的概率。</p>
                     </>
                   ) : (
                     <p className="admin-note">导入完成后，你就可以在这里直接上传新图、删图、换封面和调整顺序。</p>
@@ -812,6 +877,18 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                     </div>
                   ) : null}
 
+                  {!activeProjectIsLocal && activeProject.images.length > 0 ? (
+                    <div className="admin-actions">
+                      <button type="button" onClick={toggleSelectAllImages}>
+                        {selectedImageIds.length === activeProject.images.length ? "取消全选" : "全选图片"}
+                      </button>
+                      <button type="button" onClick={() => setSelectedImageIds([])} disabled={selectedImageIds.length === 0}>清空选择</button>
+                      <button type="button" onClick={deleteSelectedImages} disabled={selectedImageIds.length === 0}>
+                        删除已选 {selectedImageIds.length > 0 ? `${selectedImageIds.length} 张` : ""}
+                      </button>
+                    </div>
+                  ) : null}
+
                   <div className="admin-library">
                     {activeProject.images.map((image, imageIndex) => (
                       <article className="admin-library-card" key={image.id}>
@@ -819,6 +896,16 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                           <img src={image.src} alt={image.alt} />
                         </div>
                         <div className="admin-library-actions">
+                          {!activeProjectIsLocal ? (
+                            <label className="admin-checkbox">
+                              <input
+                                type="checkbox"
+                                checked={selectedImageIds.includes(image.id)}
+                                onChange={() => toggleImageSelection(image.id)}
+                              />
+                              选中这张
+                            </label>
+                          ) : null}
                           <span className="admin-note">
                             第 {imageIndex + 1} 张
                             {activeProject.coverSrc === image.src ? " · 当前封面" : ""}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deleteHostedImage, reorderHostedProjectImages, setHostedProjectCover } from "@/lib/hosted-cms";
+import { deleteHostedImage, deleteHostedImages, reorderHostedProjectImages, setHostedProjectCover } from "@/lib/hosted-cms";
 import { requireAdminApiUser } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
@@ -37,6 +37,19 @@ export async function POST(request) {
       return NextResponse.json({ ok: true, projectId });
     } catch (error) {
       return NextResponse.json({ error: error.message || "删除失败。" }, { status: 500 });
+    }
+  }
+
+  if (body?.action === "deleteMany") {
+    if (!body.projectId || !Array.isArray(body.imageIds) || body.imageIds.length === 0) {
+      return NextResponse.json({ error: "缺少批量删除参数。" }, { status: 400 });
+    }
+
+    try {
+      const result = await deleteHostedImages(body.projectId, body.imageIds);
+      return NextResponse.json({ ok: true, ...result });
+    } catch (error) {
+      return NextResponse.json({ error: error.message || "批量删除失败。" }, { status: 500 });
     }
   }
 

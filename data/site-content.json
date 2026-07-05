@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "title": "OCEAN WONG王海贵 摄影作品集",
+    "description": "极简、图片优先的个人摄影作品集。"
+  },
+  "profile": {
+    "name": "Ocean Wong",
+    "chineseName": "王海贵",
+    "role": "摄影师",
+    "subtitle": "婚礼 / 活动 / 商业 / 产品 / 运动摄影",
+    "location": "南宁 / 可异地拍摄",
+    "shortBio": "我关注自然光、空间秩序与人物在场感，用安静的画面记录真实、克制而有温度的瞬间。",
+    "about": "我是一名以人像、婚礼商业活动项目为主的摄影师。我的工作方式偏向轻量、安静和长期观察：在拍摄前理解项目气质，在现场保留真实的节奏，在后期控制色彩与留白，让照片有足够的呼吸感。",
+    "portrait": "/images/about/DSC03110.jpg"
+  },
+  "contact": {
+    "email": "2693375847@qq.com",
+    "phone": "+86 17677153325",
+    "wechat": "Ddddarkly"
+  },
+  "categories": [
+    {
+      "title": "婚礼跟拍",
+      "summary": "仪式、迎亲、晚宴与真实情绪的完整记录。"
+    },
+    {
+      "title": "活动跟拍",
+      "summary": "发布会、展览、市集、品牌活动与现场纪实。"
+    },
+    {
+      "title": "商业拍摄",
+      "summary": "品牌形象、人物肖像、空间与视觉内容制作。"
+    },
+    {
+      "title": "产品摄影",
+      "summary": "静物、商品、质感细节与电商视觉。"
+    },
+    {
+      "title": "运动摄影",
+      "summary": "赛事、训练、运动员肖像与高能瞬间。"
+    }
+  ],
+  "pages": {
+    "projectsTitle": "拍摄类型",
+    "projectsIntro": "先选择拍摄大类，再进入每个具体项目。项目文件夹仍然由本地后台自动识别。",
+    "categoryIntro": "这个大类下的照片会直接显示在这里。你仍然可以在后台用项目文件夹批量管理照片。",
+    "contactTitle": "联系我",
+    "contactIntro": "欢迎咨询婚礼、活动、商业、产品或运动拍摄，也可以聊聊长期合作与影像内容制作。",
+    "aboutEyebrow": "About",
+    "projectsEyebrow": "Portfolio",
+    "categoryEyebrow": "Gallery",
+    "contactEyebrow": "Contact"
+  }
+}

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1200" role="img" aria-label="代表作占位图片">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ddd9cf"/>
+      <stop offset="0.45" stop-color="#9d9285"/>
+      <stop offset="1" stop-color="#262422"/>
+    </linearGradient>
+    <radialGradient id="light" cx="33%" cy="28%" r="42%">
+      <stop offset="0" stop-color="#fff8ea" stop-opacity="0.92"/>
+      <stop offset="0.54" stop-color="#d7c9b6" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#111" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1800" height="1200" fill="url(#g)"/>
+  <rect width="1800" height="1200" fill="url(#light)"/>
+  <rect x="180" y="130" width="560" height="900" fill="#f6efe2" opacity="0.16"/>
+  <rect x="760" y="130" width="2" height="900" fill="#fff" opacity="0.28"/>
+  <ellipse cx="1080" cy="710" rx="190" ry="330" fill="#1f1d1b" opacity="0.66"/>
+  <circle cx="1060" cy="390" r="92" fill="#c8ad91" opacity="0.62"/>
+  <rect x="0" y="970" width="1800" height="230" fill="#111" opacity="0.34"/>
+</svg>

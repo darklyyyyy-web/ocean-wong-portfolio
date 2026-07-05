@@ -1,0 +1,52 @@
+{
+  "产品摄影": {
+    "title": "产品摄影",
+    "category": "产品摄影",
+    "year": "",
+    "location": "",
+    "summary": "从文件夹自动识别的作品项目，可在本地后台补充简介。",
+    "description": "这个项目来自本地作品文件夹。你可以在本地后台里补充完整项目说明。",
+    "cover": "1a6bffdd980fa2ad730148e1c6c3496c.JPG",
+    "published": true
+  },
+  "婚礼摄影": {
+    "title": "婚礼摄影",
+    "category": "婚礼跟拍",
+    "year": "",
+    "location": "",
+    "summary": "仪式、迎亲、晚宴与真实情绪的完整记录。",
+    "description": "这个项目来自本地作品文件夹。你可以在本地后台里补充完整项目说明。",
+    "cover": "0f97afd20299bf3ddb4e765c6a0e6f7f.JPG",
+    "published": true
+  },
+  "活动跟拍": {
+    "title": "活动跟拍",
+    "category": "活动跟拍",
+    "year": "",
+    "location": "",
+    "summary": "发布会、展览、市集、品牌活动与现场纪实。",
+    "description": "这个项目来自本地作品文件夹。你可以在本地后台里补充完整项目说明。",
+    "cover": "0c3781fec441052a5464afbb11a4c662.JPG",
+    "published": true
+  },
+  "商业拍摄": {
+    "title": "商业拍摄",
+    "category": "商业拍摄",
+    "year": "",
+    "location": "",
+    "summary": "品牌形象、人物肖像、空间与视觉内容制作。",
+    "description": "这个项目来自本地作品文件夹。你可以在本地后台里补充完整项目说明。",
+    "cover": "0d30978c2ceaba7001b6f28608350841.JPG",
+    "published": true
+  },
+  "运动摄影": {
+    "title": "运动摄影",
+    "category": "运动摄影",
+    "year": "",
+    "location": "",
+    "summary": "赛事、训练、运动员肖像与高能瞬间。",
+    "description": "这个项目来自本地作品文件夹。你可以在本地后台里补充完整项目说明。",
+    "cover": "3c9bf65239fd628de9a1609ffed0e44c.JPG",
+    "published": true
+  }
+}

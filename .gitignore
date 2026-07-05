@@ -1,0 +1,12 @@
+.next
+node_modules
+out
+.vercel
+.pnpm-store
+.DS_Store
+*.log
+public/images/projects/
+supabase/.schema.sql.swp
+
+# Local Netlify folder
+.netlify

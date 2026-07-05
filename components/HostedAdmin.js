@@ -381,6 +381,38 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
           <div className="admin-stack">
             <section className="admin-card">
               <div className="admin-card-header">
+                <h2>拍摄分类管理</h2>
+                <p>这里可以直接新增、改名或删除拍摄分类。改完后点击上方“保存网站设置”即可生效。</p>
+              </div>
+              <div className="admin-actions">
+                <button type="button" onClick={addCategory}>新增拍摄分类</button>
+              </div>
+              <div className="admin-category-list">
+                {siteContent.categories.map((category, index) => (
+                  <div className="admin-category-card" key={`${category.title}-${index}`}>
+                    <label>
+                      分类名称
+                      <input value={category.title} onChange={(event) => updateCategory(index, "title", event.target.value)} />
+                    </label>
+                    <label>
+                      分类说明
+                      <textarea rows="3" value={category.summary} onChange={(event) => updateCategory(index, "summary", event.target.value)} />
+                    </label>
+                    <div className="admin-actions">
+                      <span className="admin-note">
+                        {category.title?.trim()
+                          ? `当前有 ${categoryUsage.get(category.title.trim()) || 0} 个相册使用这个分类`
+                          : "这是一个还没命名的分类草稿"}
+                      </span>
+                      <button type="button" onClick={() => deleteCategory(index)}>删除这个分类</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="admin-card">
+              <div className="admin-card-header">
                 <h2>首页与个人信息</h2>
                 <p>支持直接修改主标题、次标题、简介、联系方式和头像链接。</p>
               </div>
@@ -451,8 +483,8 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
 
             <section className="admin-card">
               <div className="admin-card-header">
-                <h2>分类与页面文案</h2>
-                <p>这里控制作品页顶部文案、分类页顶部文案，以及每个拍摄分类的名称和说明。</p>
+                <h2>页面文案</h2>
+                <p>这里控制作品页、分类页、联系页、关于页顶部的标题和说明文字。</p>
               </div>
               <div className="admin-form admin-form-grid">
                 <label>
@@ -500,34 +532,6 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                   <small>显示在 `/contact` 页面标题下方。</small>
                   <textarea rows="3" value={siteContent.pages.contactIntro} onChange={(event) => updateSiteSection("pages", "contactIntro", event.target.value)} />
                 </label>
-              </div>
-
-              <div className="admin-subsection">
-                <div className="admin-actions">
-                  <button type="button" onClick={addCategory}>新增拍摄分类</button>
-                </div>
-                <div className="admin-category-list">
-                  {siteContent.categories.map((category, index) => (
-                    <div className="admin-category-card" key={`${category.title}-${index}`}>
-                      <label>
-                        分类名称
-                        <input value={category.title} onChange={(event) => updateCategory(index, "title", event.target.value)} />
-                      </label>
-                      <label>
-                        分类说明
-                        <textarea rows="3" value={category.summary} onChange={(event) => updateCategory(index, "summary", event.target.value)} />
-                      </label>
-                      <div className="admin-actions">
-                        <span className="admin-note">
-                          {category.title?.trim()
-                            ? `当前有 ${categoryUsage.get(category.title.trim()) || 0} 个相册使用这个分类`
-                            : "这是一个还没命名的分类草稿"}
-                        </span>
-                        <button type="button" onClick={() => deleteCategory(index)}>删除这个分类</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </section>
           </div>

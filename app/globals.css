@@ -823,6 +823,40 @@ a {
   margin-top: 34px;
 }
 
+.admin-category-workspace {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 28px;
+  margin-top: 34px;
+}
+
+.admin-category-browser {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.admin-category-browser button {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  font: inherit;
+}
+
+.admin-category-browser button.active {
+  border-color: var(--ink);
+  background: var(--paper);
+}
+
+.admin-category-browser small {
+  color: var(--muted);
+}
+
 .admin-stack {
   display: grid;
   gap: 22px;
@@ -1058,6 +1092,41 @@ a {
   border: 1px solid var(--line);
 }
 
+.admin-album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.admin-album-card {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.admin-album-cover {
+  aspect-ratio: 4 / 3;
+  background: var(--soft);
+}
+
+.admin-album-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-album-body {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.admin-album-body h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 400;
+}
+
 @media (max-width: 760px) {
   .site-header {
     align-items: flex-start;
@@ -1116,6 +1185,7 @@ a {
 
   .admin-heading,
   .admin-layout,
+  .admin-category-workspace,
   .admin-panel,
   .admin-form-grid {
     grid-template-columns: 1fr;

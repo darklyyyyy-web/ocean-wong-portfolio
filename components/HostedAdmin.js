@@ -57,6 +57,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   const router = useRouter();
   const [tab, setTab] = useState("site");
   const [siteContent, setSiteContent] = useState(initialSiteContent || emptySiteContent());
+  const [savedSiteContent, setSavedSiteContent] = useState(initialSiteContent || emptySiteContent());
   const [projects, setProjects] = useState(initialProjects);
   const [activeProjectId, setActiveProjectId] = useState("");
   const [siteStatus, setSiteStatus] = useState(
@@ -65,8 +66,9 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   const [projectStatus, setProjectStatus] = useState(
     initialStatus || (initialSiteContent ? `已读取 ${initialProjects.length || 0} 个线上相册。` : "正在读取相册...")
   );
-  const [loading, setLoading] = useState(!initialSiteContent && !initialStatus);
+  const [loading, setLoading] = useState(!initialSiteContent);
   const activeProject = useMemo(() => projects.find((project) => project.id === activeProjectId), [projects, activeProjectId]);
+  const totalImageCount = useMemo(() => projects.reduce((total, project) => total + (project.images?.length || 0), 0), [projects]);
   const categoryUsage = useMemo(() => {
     const usage = new Map();
     projects.forEach((project) => {
@@ -76,6 +78,13 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
     });
     return usage;
   }, [projects]);
+  const categorySummaries = useMemo(() => siteContent.categories.map((category) => ({
+    title: (category.title || "").trim(),
+    projectCount: categoryUsage.get((category.title || "").trim()) || 0,
+    imageCount: projects
+      .filter((project) => (project.category || "").trim() === (category.title || "").trim())
+      .reduce((total, project) => total + (project.images?.length || 0), 0)
+  })), [categoryUsage, projects, siteContent.categories]);
 
   async function loadBootstrap() {
     setLoading(true);
@@ -91,6 +100,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
 
       const data = await response.json();
       setSiteContent(data.siteContent || emptySiteContent());
+      setSavedSiteContent(data.siteContent || emptySiteContent());
       setProjects(data.projects || []);
       setActiveProjectId((current) => current || data.projects?.[0]?.id || "");
       setSiteStatus("网站设置已加载。");
@@ -105,10 +115,10 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   }
 
   useEffect(() => {
-    if (!initialSiteContent && !initialStatus) {
+    if (!initialSiteContent) {
       loadBootstrap();
     }
-  }, []);
+  }, [initialSiteContent]);
 
   useEffect(() => {
     if (!activeProjectId && projects[0]?.id) {
@@ -127,6 +137,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   }
 
   function updateCategory(index, field, value) {
+    const previousTitle = (siteContent.categories[index]?.title || "").trim();
     setSiteContent((current) => ({
       ...current,
       categories: current.categories.map((category, categoryIndex) => (
@@ -135,6 +146,15 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
           : category
       ))
     }));
+
+    if (field === "title") {
+      const nextTitle = value.trim();
+      setProjects((current) => current.map((project) => (
+        (project.category || "").trim() === previousTitle
+          ? { ...project, category: nextTitle }
+          : project
+      )));
+    }
   }
 
   function updateProject(field, value) {
@@ -147,11 +167,21 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
 
   async function saveSite() {
     setSiteStatus("正在保存网站设置...");
+    const renamePairs = savedSiteContent?.categories
+      ?.map((category, index) => {
+        const previousTitle = (category?.title || "").trim();
+        const nextTitle = (siteContent.categories[index]?.title || "").trim();
+        return previousTitle && nextTitle && previousTitle !== nextTitle
+          ? { from: previousTitle, to: nextTitle }
+          : null;
+      })
+      .filter(Boolean) || [];
+
     const response = await fetch("/api/admin/cms/site", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: siteContent })
+      body: JSON.stringify({ content: siteContent, renamePairs })
     });
 
     const data = await response.json();
@@ -161,6 +191,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
     }
 
     setSiteContent(data.content);
+    setSavedSiteContent(data.content);
     setSiteStatus("网站设置已保存。");
     router.refresh();
   }
@@ -314,6 +345,49 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
     setProjectStatus("图片已删除。");
   }
 
+  async function moveImage(imageId, direction) {
+    if (!activeProject) return;
+    const currentIndex = activeProject.images.findIndex((image) => image.id === imageId);
+    const targetIndex = currentIndex + direction;
+
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= activeProject.images.length) {
+      return;
+    }
+
+    const reorderedImages = [...activeProject.images];
+    const [movedImage] = reorderedImages.splice(currentIndex, 1);
+    reorderedImages.splice(targetIndex, 0, movedImage);
+
+    setProjects((current) => current.map((project) => (
+      project.id === activeProjectId
+        ? { ...project, images: reorderedImages }
+        : project
+    )));
+    setProjectStatus("正在保存图片顺序...");
+
+    const response = await fetch("/api/admin/cms/image", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "reorder",
+        projectId: activeProjectId,
+        imageIds: reorderedImages.map((image) => image.id)
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      setProjectStatus(data.error || "排序失败。");
+      await loadBootstrap();
+      setActiveProjectId(activeProjectId);
+      return;
+    }
+
+    setProjectStatus("图片顺序已更新。");
+    router.refresh();
+  }
+
   function addCategory() {
     setSiteContent((current) => ({
       ...current,
@@ -384,6 +458,20 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                 <h2>拍摄分类管理</h2>
                 <p>这里可以直接新增、改名或删除拍摄分类。改完后点击上方“保存网站设置”即可生效。</p>
               </div>
+              <div className="admin-form admin-form-grid">
+                <div className="admin-category-card">
+                  <strong>{siteContent.categories.length}</strong>
+                  <span className="admin-note">当前分类数量</span>
+                </div>
+                <div className="admin-category-card">
+                  <strong>{projects.length}</strong>
+                  <span className="admin-note">当前相册数量</span>
+                </div>
+                <div className="admin-category-card">
+                  <strong>{totalImageCount}</strong>
+                  <span className="admin-note">当前图片总数</span>
+                </div>
+              </div>
               <div className="admin-actions">
                 <button type="button" onClick={addCategory}>新增拍摄分类</button>
               </div>
@@ -401,7 +489,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                     <div className="admin-actions">
                       <span className="admin-note">
                         {category.title?.trim()
-                          ? `当前有 ${categoryUsage.get(category.title.trim()) || 0} 个相册使用这个分类`
+                          ? `当前有 ${categorySummaries[index]?.projectCount || 0} 个相册，合计 ${categorySummaries[index]?.imageCount || 0} 张图片`
                           : "这是一个还没命名的分类草稿"}
                       </span>
                       <button type="button" onClick={() => deleteCategory(index)}>删除这个分类</button>
@@ -560,7 +648,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                 <div className="admin-card">
                   <div className="admin-card-header">
                     <h2>相册信息</h2>
-                    <p>先保存相册信息，再继续上传图片会更稳。</p>
+                    <p>这里先决定相册属于哪个分类。以后你要改“婚礼跟拍”里的内容，主要就在这个区域和下面的图片库里操作。</p>
                   </div>
                   <div className="admin-form admin-form-grid">
                     <label>
@@ -609,12 +697,13 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                 <div className="admin-card">
                   <div className="admin-card-header">
                     <h2>图片上传与图片库</h2>
-                    <p>可以一次上传多张。点击“设为封面”即可替换列表封面图。</p>
+                    <p>可以一次上传多张。每张图都支持上移、下移、设为封面和删除，前台瀑布流会按这里的顺序显示。</p>
                   </div>
 
                   <div className="admin-upload-row">
-                    <input type="file" accept="image/*" multiple onChange={uploadFiles} />
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" multiple onChange={uploadFiles} />
                   </div>
+                  <p className="admin-note">建议上传 JPG、PNG、WebP、AVIF 或 GIF，单张不超过 15MB。</p>
 
                   {isDraftProject(activeProject) ? (
                     <p className="admin-note">这个相册还是草稿，先保存一次，下面的图片库和删除功能才会生效。</p>
@@ -627,12 +716,18 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                   ) : null}
 
                   <div className="admin-library">
-                    {activeProject.images.map((image) => (
+                    {activeProject.images.map((image, imageIndex) => (
                       <article className="admin-library-card" key={image.id}>
                         <div className="admin-library-thumb">
                           <img src={image.src} alt={image.alt} />
                         </div>
                         <div className="admin-library-actions">
+                          <span className="admin-note">
+                            第 {imageIndex + 1} 张
+                            {activeProject.coverSrc === image.src ? " · 当前封面" : ""}
+                          </span>
+                          <button type="button" onClick={() => moveImage(image.id, -1)} disabled={imageIndex === 0}>上移</button>
+                          <button type="button" onClick={() => moveImage(image.id, 1)} disabled={imageIndex === activeProject.images.length - 1}>下移</button>
                           <button type="button" onClick={() => setCover(image.id)}>设为封面</button>
                           <button type="button" onClick={() => deleteImage(image.id)}>删除图片</button>
                         </div>

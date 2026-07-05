@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminApiUser } from "@/lib/admin-auth";
-import { saveHostedSiteContent } from "@/lib/hosted-cms";
+import { renameHostedProjectCategories, saveHostedSiteContent } from "@/lib/hosted-cms";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +19,9 @@ export async function POST(request) {
 
   try {
     const content = await saveHostedSiteContent(body.content);
+    if (Array.isArray(body.renamePairs) && body.renamePairs.length > 0) {
+      await renameHostedProjectCategories(body.renamePairs);
+    }
     return NextResponse.json({ ok: true, content });
   } catch (error) {
     return NextResponse.json({ error: error.message || "保存失败。" }, { status: 500 });

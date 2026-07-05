@@ -53,6 +53,28 @@ function isDraftProject(project) {
   return Boolean(project?.id && project.id.startsWith("draft-"));
 }
 
+function summarizeProjects(projects = []) {
+  const hostedCount = projects.filter((project) => project.source === "hosted").length;
+  const localCount = projects.filter((project) => project.source === "local").length;
+  const draftCount = projects.filter((project) => isDraftProject(project)).length;
+
+  return {
+    hostedCount,
+    localCount,
+    draftCount
+  };
+}
+
+function createProjectStatus(projects = []) {
+  const summary = summarizeProjects(projects);
+
+  if (summary.localCount > 0) {
+    return `已识别 ${projects.length} 个相册，其中 ${summary.hostedCount} 个已接入线上后台，${summary.localCount} 个还在网站原始图库里，点进去后可一键导入。`;
+  }
+
+  return `已读取 ${summary.hostedCount} 个线上相册。`;
+}
+
 export default function HostedAdmin({ userEmail, initialSiteContent = null, initialProjects = [], initialStatus = "" }) {
   const router = useRouter();
   const [tab, setTab] = useState("site");
@@ -64,10 +86,12 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
     initialStatus || (initialSiteContent ? "网站设置已加载。" : "正在读取网站设置...")
   );
   const [projectStatus, setProjectStatus] = useState(
-    initialStatus || (initialSiteContent ? `已读取 ${initialProjects.length || 0} 个线上相册。` : "正在读取相册...")
+    initialStatus || (initialSiteContent ? createProjectStatus(initialProjects) : "正在读取相册...")
   );
   const [loading, setLoading] = useState(!initialSiteContent);
   const activeProject = useMemo(() => projects.find((project) => project.id === activeProjectId), [projects, activeProjectId]);
+  const activeProjectIsLocal = activeProject?.source === "local";
+  const projectSummary = useMemo(() => summarizeProjects(projects), [projects]);
   const totalImageCount = useMemo(() => projects.reduce((total, project) => total + (project.images?.length || 0), 0), [projects]);
   const categoryUsage = useMemo(() => {
     const usage = new Map();
@@ -104,7 +128,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
       setProjects(data.projects || []);
       setActiveProjectId((current) => current || data.projects?.[0]?.id || "");
       setSiteStatus("网站设置已加载。");
-      setProjectStatus(`已读取 ${data.projects?.length || 0} 个线上相册。`);
+      setProjectStatus(createProjectStatus(data.projects || []));
     } catch (error) {
       const message = error instanceof Error ? error.message : "读取失败，请刷新重试。";
       setSiteStatus(message);
@@ -198,6 +222,10 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
 
   async function saveProject(project = activeProject) {
     if (!project) return;
+    if (project.source === "local") {
+      setProjectStatus("这个相册还在网站原始图库里，请先点“导入到线上后台”，导入后再在线修改。");
+      return null;
+    }
     const title = (project.title || "").trim();
     const category = (project.category || "").trim();
 
@@ -246,6 +274,10 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
 
   async function deleteProject() {
     if (!activeProjectId) return;
+    if (activeProject?.source === "local") {
+      setProjectStatus("这个相册还没接入线上后台，目前不能直接删除。");
+      return;
+    }
     if (isDraftProject(activeProject)) {
       const remainingProjects = projects.filter((project) => project.id !== activeProjectId);
       setProjects(remainingProjects);
@@ -273,6 +305,11 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   async function uploadFiles(event) {
     const files = [...(event.target.files || [])];
     if (!activeProjectId || files.length === 0) return;
+    if (activeProject?.source === "local") {
+      setProjectStatus("这个相册还在网站原始图库里，请先导入到线上后台，再上传或替换图片。");
+      event.target.value = "";
+      return;
+    }
     if (isDraftProject(activeProject)) {
       setProjectStatus("请先保存当前相册，再上传图片。");
       event.target.value = "";
@@ -303,6 +340,10 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   }
 
   async function setCover(imageId) {
+    if (activeProject?.source === "local") {
+      setProjectStatus("请先导入这个相册，再在线设置封面。");
+      return;
+    }
     const response = await fetch("/api/admin/cms/image", {
       method: "POST",
       credentials: "include",
@@ -326,6 +367,10 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   }
 
   async function deleteImage(imageId) {
+    if (activeProject?.source === "local") {
+      setProjectStatus("请先导入这个相册，再在线删除图片。");
+      return;
+    }
     setProjectStatus("正在删除图片...");
     const response = await fetch("/api/admin/cms/image", {
       method: "POST",
@@ -347,6 +392,10 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
 
   async function moveImage(imageId, direction) {
     if (!activeProject) return;
+    if (activeProject.source === "local") {
+      setProjectStatus("请先导入这个相册，再在线调整图片顺序。");
+      return;
+    }
     const currentIndex = activeProject.images.findIndex((image) => image.id === imageId);
     const targetIndex = currentIndex + direction;
 
@@ -386,6 +435,28 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
 
     setProjectStatus("图片顺序已更新。");
     router.refresh();
+  }
+
+  async function importProject() {
+    if (!activeProject || activeProject.source !== "local") return;
+
+    setProjectStatus(`正在把“${activeProject.title}”导入线上后台...`);
+    const response = await fetch("/api/admin/cms/import", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: activeProject.slug })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      setProjectStatus(data.error || "导入失败。");
+      return;
+    }
+
+    await loadBootstrap();
+    setActiveProjectId(data.projectId);
+    setProjectStatus("这个相册已经导入线上后台，现在可以直接改封面、顺序、图片数量和文字了。");
   }
 
   function addCategory() {
@@ -436,7 +507,11 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
         </div>
       </div>
 
-      <p className="admin-status">当前账号：{userEmail}</p>
+      <p className="admin-status">
+        当前账号：{userEmail}
+        {` · 已接入 ${projectSummary.hostedCount} 个线上相册`}
+        {projectSummary.localCount ? ` · 待导入 ${projectSummary.localCount} 个网站现有相册` : ""}
+      </p>
 
       <div className="admin-tabs" role="tablist" aria-label="后台功能">
         <button type="button" className={tab === "site" ? "active" : ""} onClick={() => setTab("site")}>网站设置</button>
@@ -465,7 +540,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                 </div>
                 <div className="admin-category-card">
                   <strong>{projects.length}</strong>
-                  <span className="admin-note">当前相册数量</span>
+                  <span className="admin-note">当前可见相册数量</span>
                 </div>
                 <div className="admin-category-card">
                   <strong>{totalImageCount}</strong>
@@ -628,17 +703,21 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
         <>
           <div className="admin-actions">
             <button type="button" onClick={createProject}>新建相册</button>
-            <button type="button" className="primary" onClick={() => saveProject()}>保存当前相册</button>
-            {activeProject ? <button type="button" onClick={deleteProject}>删除当前相册</button> : null}
+            {activeProjectIsLocal ? (
+              <button type="button" className="primary" onClick={importProject}>导入到线上后台</button>
+            ) : (
+              <button type="button" className="primary" onClick={() => saveProject()}>保存当前相册</button>
+            )}
+            {activeProject && !activeProjectIsLocal ? <button type="button" onClick={deleteProject}>删除当前相册</button> : null}
           </div>
           <p className="admin-status">{projectStatus}</p>
 
           <div className="admin-layout">
-            <aside className="admin-sidebar" aria-label="线上相册">
+            <aside className="admin-sidebar" aria-label="相册列表">
               {projects.map((project) => (
                 <button key={project.id} type="button" className={project.id === activeProjectId ? "active" : ""} onClick={() => setActiveProjectId(project.id)}>
                   <span>{project.title || "未命名相册"}</span>
-                  <small>{project.images.length} 张图片</small>
+                  <small>{project.source === "local" ? `网站现有相册 · ${project.images.length} 张图片` : `${project.images.length} 张图片`}</small>
                 </button>
               ))}
             </aside>
@@ -648,23 +727,27 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                 <div className="admin-card">
                   <div className="admin-card-header">
                     <h2>相册信息</h2>
-                    <p>这里先决定相册属于哪个分类。以后你要改“婚礼跟拍”里的内容，主要就在这个区域和下面的图片库里操作。</p>
+                    <p>
+                      {activeProjectIsLocal
+                        ? "这个相册已经在网站前台显示，但还没接入线上后台。先点上方“导入到线上后台”，导入后就能在线改分类、封面、图片顺序和数量。"
+                        : "这里先决定相册属于哪个分类。以后你要改“婚礼跟拍”里的内容，主要就在这个区域和下面的图片库里操作。"}
+                    </p>
                   </div>
                   <div className="admin-form admin-form-grid">
                     <label>
                       相册标题
                       <small>前台会直接显示这个标题。</small>
-                      <input value={activeProject.title} onChange={(event) => updateProject("title", event.target.value)} />
+                      <input disabled={activeProjectIsLocal} value={activeProject.title} onChange={(event) => updateProject("title", event.target.value)} />
                     </label>
                     <label>
                       网址标识
                       <small>留空也可以，保存时会自动用标题生成。</small>
-                      <input value={activeProject.slug} onChange={(event) => updateProject("slug", event.target.value)} />
+                      <input disabled={activeProjectIsLocal} value={activeProject.slug} onChange={(event) => updateProject("slug", event.target.value)} />
                     </label>
                     <label>
                       拍摄分类
                       <small>会出现在作品分类列表里。</small>
-                      <select value={activeProject.category} onChange={(event) => updateProject("category", event.target.value)}>
+                      <select disabled={activeProjectIsLocal} value={activeProject.category} onChange={(event) => updateProject("category", event.target.value)}>
                         {!activeProject.category ? <option value="">请选择分类</option> : null}
                         {siteContent.categories.map((category) => (
                           <option key={category.title} value={category.title}>{category.title}</option>
@@ -673,23 +756,23 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                     </label>
                     <label>
                       年份
-                      <input value={activeProject.year} onChange={(event) => updateProject("year", event.target.value)} />
+                      <input disabled={activeProjectIsLocal} value={activeProject.year} onChange={(event) => updateProject("year", event.target.value)} />
                     </label>
                     <label>
                       地点
-                      <input value={activeProject.location} onChange={(event) => updateProject("location", event.target.value)} />
+                      <input disabled={activeProjectIsLocal} value={activeProject.location} onChange={(event) => updateProject("location", event.target.value)} />
                     </label>
                     <label className="admin-checkbox">
-                      <input type="checkbox" checked={activeProject.published} onChange={(event) => updateProject("published", event.target.checked)} />
+                      <input disabled={activeProjectIsLocal} type="checkbox" checked={activeProject.published} onChange={(event) => updateProject("published", event.target.checked)} />
                       在网站显示这个相册
                     </label>
                     <label className="admin-form-span-2">
                       相册简介
-                      <textarea rows="3" value={activeProject.summary} onChange={(event) => updateProject("summary", event.target.value)} />
+                      <textarea disabled={activeProjectIsLocal} rows="3" value={activeProject.summary} onChange={(event) => updateProject("summary", event.target.value)} />
                     </label>
                     <label className="admin-form-span-2">
                       相册详细说明
-                      <textarea rows="5" value={activeProject.description} onChange={(event) => updateProject("description", event.target.value)} />
+                      <textarea disabled={activeProjectIsLocal} rows="5" value={activeProject.description} onChange={(event) => updateProject("description", event.target.value)} />
                     </label>
                   </div>
                 </div>
@@ -697,13 +780,23 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                 <div className="admin-card">
                   <div className="admin-card-header">
                     <h2>图片上传与图片库</h2>
-                    <p>可以一次上传多张。每张图都支持上移、下移、设为封面和删除，前台瀑布流会按这里的顺序显示。</p>
+                    <p>
+                      {activeProjectIsLocal
+                        ? "下面这些是网站当前正在使用的原始图片。导入后，这里会变成可直接操作的线上图库。"
+                        : "可以一次上传多张。每张图都支持上移、下移、设为封面和删除，前台瀑布流会按这里的顺序显示。"}
+                    </p>
                   </div>
 
-                  <div className="admin-upload-row">
-                    <input type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" multiple onChange={uploadFiles} />
-                  </div>
-                  <p className="admin-note">建议上传 JPG、PNG、WebP、AVIF 或 GIF，单张不超过 15MB。</p>
+                  {!activeProjectIsLocal ? (
+                    <>
+                      <div className="admin-upload-row">
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" multiple onChange={uploadFiles} />
+                      </div>
+                      <p className="admin-note">建议上传 JPG、PNG、WebP、AVIF 或 GIF，单张不超过 15MB。</p>
+                    </>
+                  ) : (
+                    <p className="admin-note">导入完成后，你就可以在这里直接上传新图、删图、换封面和调整顺序。</p>
+                  )}
 
                   {isDraftProject(activeProject) ? (
                     <p className="admin-note">这个相册还是草稿，先保存一次，下面的图片库和删除功能才会生效。</p>
@@ -726,10 +819,16 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                             第 {imageIndex + 1} 张
                             {activeProject.coverSrc === image.src ? " · 当前封面" : ""}
                           </span>
-                          <button type="button" onClick={() => moveImage(image.id, -1)} disabled={imageIndex === 0}>上移</button>
-                          <button type="button" onClick={() => moveImage(image.id, 1)} disabled={imageIndex === activeProject.images.length - 1}>下移</button>
-                          <button type="button" onClick={() => setCover(image.id)}>设为封面</button>
-                          <button type="button" onClick={() => deleteImage(image.id)}>删除图片</button>
+                          {activeProjectIsLocal ? (
+                            <span className="admin-note">导入后可在这里直接管理</span>
+                          ) : (
+                            <>
+                              <button type="button" onClick={() => moveImage(image.id, -1)} disabled={imageIndex === 0}>上移</button>
+                              <button type="button" onClick={() => moveImage(image.id, 1)} disabled={imageIndex === activeProject.images.length - 1}>下移</button>
+                              <button type="button" onClick={() => setCover(image.id)}>设为封面</button>
+                              <button type="button" onClick={() => deleteImage(image.id)}>删除图片</button>
+                            </>
+                          )}
                         </div>
                       </article>
                     ))}
@@ -741,7 +840,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
               </div>
             ) : (
               <div className="admin-card">
-                <p className="admin-note">还没有线上相册，点击“新建相册”开始。</p>
+                <p className="admin-note">还没有可管理的相册，点击“新建相册”或从左侧选择网站现有相册导入。</p>
               </div>
             )}
           </div>

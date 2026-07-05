@@ -49,6 +49,10 @@ function emptyProject(categories) {
   };
 }
 
+function isDraftProject(project) {
+  return Boolean(project?.id && project.id.startsWith("draft-"));
+}
+
 export default function HostedAdmin({ userEmail }) {
   const router = useRouter();
   const [tab, setTab] = useState("site");
@@ -59,6 +63,15 @@ export default function HostedAdmin({ userEmail }) {
   const [projectStatus, setProjectStatus] = useState("正在读取相册...");
   const [loading, setLoading] = useState(true);
   const activeProject = useMemo(() => projects.find((project) => project.id === activeProjectId), [projects, activeProjectId]);
+  const categoryUsage = useMemo(() => {
+    const usage = new Map();
+    projects.forEach((project) => {
+      const key = (project.category || "").trim();
+      if (!key) return;
+      usage.set(key, (usage.get(key) || 0) + 1);
+    });
+    return usage;
+  }, [projects]);
 
   async function loadBootstrap() {
     setLoading(true);
@@ -136,12 +149,28 @@ export default function HostedAdmin({ userEmail }) {
 
   async function saveProject(project = activeProject) {
     if (!project) return;
+    const title = (project.title || "").trim();
+    const category = (project.category || "").trim();
+
+    if (!title) {
+      setProjectStatus("请先填写相册标题，再保存相册。");
+      return null;
+    }
+
+    if (!category) {
+      setProjectStatus("请先选择拍摄分类，再保存相册。");
+      return null;
+    }
 
     setProjectStatus("正在保存相册...");
     const response = await fetch("/api/admin/cms/project", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project })
+      body: JSON.stringify({
+        project: isDraftProject(project)
+          ? { ...project, id: "" }
+          : project
+      })
     });
 
     const data = await response.json();
@@ -157,15 +186,23 @@ export default function HostedAdmin({ userEmail }) {
   }
 
   async function createProject() {
-    const draft = emptyProject(siteContent.categories);
-    const newId = await saveProject(draft);
-    if (newId) {
-      setTab("projects");
-    }
+    const draftId = `draft-${Date.now()}`;
+    const draft = { ...emptyProject(siteContent.categories), id: draftId };
+    setProjects((current) => [draft, ...current]);
+    setActiveProjectId(draftId);
+    setTab("projects");
+    setProjectStatus("已创建一个未保存的相册草稿。先填写标题和分类，再点“保存当前相册”。");
   }
 
   async function deleteProject() {
     if (!activeProjectId) return;
+    if (isDraftProject(activeProject)) {
+      const remainingProjects = projects.filter((project) => project.id !== activeProjectId);
+      setProjects(remainingProjects);
+      setActiveProjectId(remainingProjects[0]?.id || "");
+      setProjectStatus("草稿相册已移除。");
+      return;
+    }
     setProjectStatus("正在删除相册...");
 
     const response = await fetch(`/api/admin/cms/project?projectId=${encodeURIComponent(activeProjectId)}`, {
@@ -185,6 +222,11 @@ export default function HostedAdmin({ userEmail }) {
   async function uploadFiles(event) {
     const files = [...(event.target.files || [])];
     if (!activeProjectId || files.length === 0) return;
+    if (isDraftProject(activeProject)) {
+      setProjectStatus("请先保存当前相册，再上传图片。");
+      event.target.value = "";
+      return;
+    }
 
     setProjectStatus(`正在上传 ${files.length} 张图片...`);
     const formData = new FormData();
@@ -231,6 +273,7 @@ export default function HostedAdmin({ userEmail }) {
   }
 
   async function deleteImage(imageId) {
+    setProjectStatus("正在删除图片...");
     const response = await fetch("/api/admin/cms/image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -246,6 +289,33 @@ export default function HostedAdmin({ userEmail }) {
     await loadBootstrap();
     setActiveProjectId(data.projectId);
     setProjectStatus("图片已删除。");
+  }
+
+  function addCategory() {
+    setSiteContent((current) => ({
+      ...current,
+      categories: [...current.categories, { title: "", summary: "", sortOrder: current.categories.length }]
+    }));
+    setSiteStatus("已新增一个分类草稿。填写名称后点击“保存网站设置”即可生效。");
+  }
+
+  function deleteCategory(index) {
+    const category = siteContent.categories[index];
+    const title = (category?.title || "").trim();
+    const usedCount = title ? (categoryUsage.get(title) || 0) : 0;
+
+    if (usedCount > 0) {
+      setSiteStatus(`“${title}” 仍有 ${usedCount} 个相册在使用，先把这些相册改到别的分类后再删除。`);
+      return;
+    }
+
+    setSiteContent((current) => ({
+      ...current,
+      categories: current.categories
+        .filter((_, categoryIndex) => categoryIndex !== index)
+        .map((item, order) => ({ ...item, sortOrder: order }))
+    }));
+    setSiteStatus(title ? `已移除分类“${title}”，记得保存网站设置。` : "已移除空白分类草稿，记得保存网站设置。");
   }
 
   async function signOut() {
@@ -359,58 +429,59 @@ export default function HostedAdmin({ userEmail }) {
             <section className="admin-card">
               <div className="admin-card-header">
                 <h2>分类与页面文案</h2>
-                <p>支持增加分类、修改分类说明，以及作品页和联系页的引导文字。</p>
+                <p>这里控制作品页顶部文案、分类页顶部文案，以及每个拍摄分类的名称和说明。</p>
               </div>
               <div className="admin-form admin-form-grid">
                 <label>
                   作品页小标题
+                  <small>显示在 `/projects` 页面顶部，例如 Portfolio。</small>
                   <input value={siteContent.pages.projectsEyebrow} onChange={(event) => updateSiteSection("pages", "projectsEyebrow", event.target.value)} />
                 </label>
                 <label>
                   作品页主标题
+                  <small>显示在 `/projects` 页面顶部的大标题。</small>
                   <input value={siteContent.pages.projectsTitle} onChange={(event) => updateSiteSection("pages", "projectsTitle", event.target.value)} />
                 </label>
                 <label className="admin-form-span-2">
                   作品页说明
+                  <small>显示在 `/projects` 页面顶部标题下方。</small>
                   <textarea rows="3" value={siteContent.pages.projectsIntro} onChange={(event) => updateSiteSection("pages", "projectsIntro", event.target.value)} />
                 </label>
                 <label>
                   分类页小标题
+                  <small>显示在每个分类详情页顶部，例如 Gallery。</small>
                   <input value={siteContent.pages.categoryEyebrow} onChange={(event) => updateSiteSection("pages", "categoryEyebrow", event.target.value)} />
                 </label>
                 <label>
                   联系页小标题
+                  <small>显示在 `/contact` 页面顶部。</small>
                   <input value={siteContent.pages.contactEyebrow} onChange={(event) => updateSiteSection("pages", "contactEyebrow", event.target.value)} />
                 </label>
                 <label className="admin-form-span-2">
                   分类页说明
+                  <small>显示在每个分类详情页顶部标题下方。</small>
                   <textarea rows="3" value={siteContent.pages.categoryIntro} onChange={(event) => updateSiteSection("pages", "categoryIntro", event.target.value)} />
                 </label>
                 <label>
                   联系页标题
+                  <small>显示在 `/contact` 页的大标题。</small>
                   <input value={siteContent.pages.contactTitle} onChange={(event) => updateSiteSection("pages", "contactTitle", event.target.value)} />
                 </label>
                 <label>
                   关于页小标题
+                  <small>显示在 `/about` 页面顶部。</small>
                   <input value={siteContent.pages.aboutEyebrow} onChange={(event) => updateSiteSection("pages", "aboutEyebrow", event.target.value)} />
                 </label>
                 <label className="admin-form-span-2">
                   联系页说明
+                  <small>显示在 `/contact` 页面标题下方。</small>
                   <textarea rows="3" value={siteContent.pages.contactIntro} onChange={(event) => updateSiteSection("pages", "contactIntro", event.target.value)} />
                 </label>
               </div>
 
               <div className="admin-subsection">
                 <div className="admin-actions">
-                  <button
-                    type="button"
-                    onClick={() => setSiteContent((current) => ({
-                      ...current,
-                      categories: [...current.categories, { title: "", summary: "", sortOrder: current.categories.length }]
-                    }))}
-                  >
-                    新增拍摄分类
-                  </button>
+                  <button type="button" onClick={addCategory}>新增拍摄分类</button>
                 </div>
                 <div className="admin-category-list">
                   {siteContent.categories.map((category, index) => (
@@ -423,6 +494,14 @@ export default function HostedAdmin({ userEmail }) {
                         分类说明
                         <textarea rows="3" value={category.summary} onChange={(event) => updateCategory(index, "summary", event.target.value)} />
                       </label>
+                      <div className="admin-actions">
+                        <span className="admin-note">
+                          {category.title?.trim()
+                            ? `当前有 ${categoryUsage.get(category.title.trim()) || 0} 个相册使用这个分类`
+                            : "这是一个还没命名的分类草稿"}
+                        </span>
+                        <button type="button" onClick={() => deleteCategory(index)}>删除这个分类</button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -459,15 +538,19 @@ export default function HostedAdmin({ userEmail }) {
                   <div className="admin-form admin-form-grid">
                     <label>
                       相册标题
+                      <small>前台会直接显示这个标题。</small>
                       <input value={activeProject.title} onChange={(event) => updateProject("title", event.target.value)} />
                     </label>
                     <label>
                       网址标识
+                      <small>留空也可以，保存时会自动用标题生成。</small>
                       <input value={activeProject.slug} onChange={(event) => updateProject("slug", event.target.value)} />
                     </label>
                     <label>
                       拍摄分类
+                      <small>会出现在作品分类列表里。</small>
                       <select value={activeProject.category} onChange={(event) => updateProject("category", event.target.value)}>
+                        {!activeProject.category ? <option value="">请选择分类</option> : null}
                         {siteContent.categories.map((category) => (
                           <option key={category.title} value={category.title}>{category.title}</option>
                         ))}
@@ -506,6 +589,10 @@ export default function HostedAdmin({ userEmail }) {
                     <input type="file" accept="image/*" multiple onChange={uploadFiles} />
                   </div>
 
+                  {isDraftProject(activeProject) ? (
+                    <p className="admin-note">这个相册还是草稿，先保存一次，下面的图片库和删除功能才会生效。</p>
+                  ) : null}
+
                   {activeProject.coverSrc ? (
                     <div className="admin-preview">
                       <img src={activeProject.coverSrc} alt={`${activeProject.title}封面`} />
@@ -524,6 +611,9 @@ export default function HostedAdmin({ userEmail }) {
                         </div>
                       </article>
                     ))}
+                    {activeProject.images.length === 0 ? (
+                      <p className="admin-note">这个相册还没有图片，保存相册后就可以直接上传，也能在这里逐张删除。</p>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -538,4 +628,3 @@ export default function HostedAdmin({ userEmail }) {
     </section>
   );
 }
-

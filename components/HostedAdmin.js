@@ -77,6 +77,65 @@ function createProjectStatus(projects = []) {
   return `已读取 ${summary.hostedCount} 个线上案例。`;
 }
 
+function naturalCompare(a = "", b = "") {
+  return String(a).localeCompare(String(b), "zh-CN", { numeric: true, sensitivity: "base" });
+}
+
+function parseSortableImageName(value = "") {
+  const original = String(value).trim();
+  const normalized = original.toLowerCase();
+  const extensionless = normalized.replace(/\.[a-z0-9]+$/i, "");
+  const compact = extensionless.replace(/[\s_-]+/g, "");
+
+  const dateMatch = compact.match(/^(\d{4})(\d{2})(\d{2})(\d{0,6})$/);
+  if (dateMatch) {
+    return {
+      type: "date",
+      group: `${dateMatch[1]}${dateMatch[2]}${dateMatch[3]}`,
+      order: Number(`${dateMatch[1]}${dateMatch[2]}${dateMatch[3]}${dateMatch[4] || ""}`),
+      fallback: original
+    };
+  }
+
+  const serialMatch = extensionless.match(/^([a-z]+)[\s_-]*(\d+)$/i);
+  if (serialMatch) {
+    return {
+      type: "serial",
+      group: serialMatch[1].toLowerCase(),
+      order: Number(serialMatch[2]),
+      fallback: original
+    };
+  }
+
+  return {
+    type: "text",
+    group: extensionless,
+    order: null,
+    fallback: original
+  };
+}
+
+function compareImageNames(a = "", b = "") {
+  const left = parseSortableImageName(a);
+  const right = parseSortableImageName(b);
+
+  if (left.type !== right.type) {
+    const typeOrder = { date: 0, serial: 1, text: 2 };
+    return typeOrder[left.type] - typeOrder[right.type];
+  }
+
+  const groupCompare = naturalCompare(left.group, right.group);
+  if (groupCompare !== 0) {
+    return groupCompare;
+  }
+
+  if (left.order !== null || right.order !== null) {
+    return (left.order ?? Number.MAX_SAFE_INTEGER) - (right.order ?? Number.MAX_SAFE_INTEGER);
+  }
+
+  return naturalCompare(left.fallback, right.fallback);
+}
+
 function getSortableImageName(image) {
   if (image?.fileName) {
     return image.fileName;
@@ -593,7 +652,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
     }
 
     const sortedImages = [...activeProject.images].sort((a, b) => (
-      getSortableImageName(a).localeCompare(getSortableImageName(b), "zh-CN", { numeric: true, sensitivity: "base" })
+      compareImageNames(getSortableImageName(a), getSortableImageName(b))
     ));
 
     setProjects((current) => current.map((project) => (

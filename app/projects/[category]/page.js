@@ -1,4 +1,4 @@
-import CategoryGallery from "@/components/CategoryGallery";
+import ProjectList from "@/components/ProjectList";
 import { decodeCategorySlug, getCategoryGallery } from "@/lib/projects";
 import { getSiteContent } from "@/lib/site-content";
 
@@ -30,7 +30,15 @@ export default async function CategoryPage({ params }) {
         <h1 className="page-title">{title}</h1>
         <p className="intro">{site.pages.categoryIntro}</p>
       </section>
-      <CategoryGallery projects={projects} />
+      {projects.length > 0 ? (
+        <section className="section">
+          <ProjectList projects={projects} />
+        </section>
+      ) : (
+        <section className="section">
+          <p className="empty-note">这个大类下暂时还没有可查看的案例。</p>
+        </section>
+      )}
     </>
   );
 }

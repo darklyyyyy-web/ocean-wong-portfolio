@@ -188,7 +188,7 @@ export default function AdminProjects() {
         <div>
           <p className="eyebrow">Local Studio</p>
           <h1>本地作品后台</h1>
-          <p className="admin-note">你现在可以在这里管理网站主标题、次标题、联系方式、分类说明，以及每个相册的封面和介绍文字。</p>
+          <p className="admin-note">你现在可以在这里管理网站主标题、次标题、联系方式、分类说明，以及每个案例的名称、封面和介绍文字。</p>
         </div>
       </div>
 
@@ -390,7 +390,7 @@ export default function AdminProjects() {
 
               <div className="admin-form">
                 <label>
-                  相册标题
+                  案例名称 / 次级分类名
                   <input value={activeMeta.title} onChange={(event) => updateActive("title", event.target.value)} />
                 </label>
                 <label>
@@ -414,7 +414,7 @@ export default function AdminProjects() {
                   <textarea rows="3" value={activeMeta.summary} onChange={(event) => updateActive("summary", event.target.value)} />
                 </label>
                 <label>
-                  相册详情说明
+                  案例详情说明
                   <textarea rows="5" value={activeMeta.description} onChange={(event) => updateActive("description", event.target.value)} />
                 </label>
                 <label>

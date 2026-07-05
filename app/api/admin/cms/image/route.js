@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deleteHostedImage, deleteHostedImages, reorderHostedProjectImages, setHostedProjectCover } from "@/lib/hosted-cms";
+import { deleteHostedImage, deleteHostedImages, reorderHostedProjectImages, reorderHostedProjectImagesByFilename, setHostedProjectCover } from "@/lib/hosted-cms";
 import { requireAdminApiUser } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
@@ -63,6 +63,19 @@ export async function POST(request) {
       return NextResponse.json({ ok: true });
     } catch (error) {
       return NextResponse.json({ error: error.message || "排序失败。" }, { status: 500 });
+    }
+  }
+
+  if (body?.action === "sortByFilename") {
+    if (!body.projectId) {
+      return NextResponse.json({ error: "缺少项目参数。" }, { status: 400 });
+    }
+
+    try {
+      await reorderHostedProjectImagesByFilename(body.projectId);
+      return NextResponse.json({ ok: true });
+    } catch (error) {
+      return NextResponse.json({ error: error.message || "按文件名排序失败。" }, { status: 500 });
     }
   }
 

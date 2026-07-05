@@ -77,6 +77,26 @@ function createProjectStatus(projects = []) {
   return `已读取 ${summary.hostedCount} 个线上案例。`;
 }
 
+function getSortableImageName(image) {
+  if (image?.fileName) {
+    return image.fileName;
+  }
+
+  if (image?.storagePath) {
+    const storageName = image.storagePath.split("/").pop() || image.storagePath;
+    if (image.storagePath.startsWith("local:")) {
+      return storageName;
+    }
+    return storageName.replace(/^\d+-/, "");
+  }
+
+  if (image?.alt) {
+    return image.alt;
+  }
+
+  return image?.src?.split("/").pop() || "";
+}
+
 export default function HostedAdmin({ userEmail, initialSiteContent = null, initialProjects = [], initialStatus = "" }) {
   const router = useRouter();
   const [tab, setTab] = useState("site");
@@ -567,6 +587,45 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
     router.refresh();
   }
 
+  async function sortImagesByFilename() {
+    if (!activeProject || activeProject.source === "local" || activeProject.images.length === 0) {
+      return;
+    }
+
+    const sortedImages = [...activeProject.images].sort((a, b) => (
+      getSortableImageName(a).localeCompare(getSortableImageName(b), "zh-CN", { numeric: true, sensitivity: "base" })
+    ));
+
+    setProjects((current) => current.map((project) => (
+      project.id === activeProjectId
+        ? { ...project, images: sortedImages }
+        : project
+    )));
+    setProjectStatus("正在按文件名排序...");
+
+    const response = await fetch("/api/admin/cms/image", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "sortByFilename",
+        projectId: activeProject.id
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      setProjectStatus(data.error || "按文件名排序失败。");
+      await loadBootstrap();
+      setActiveProjectId(activeProject.id);
+      return;
+    }
+
+    await loadBootstrap();
+    setActiveProjectId(activeProject.id);
+    setProjectStatus("已经按文件名重新排序。");
+  }
+
   async function importProject(projectOverride = null) {
     const targetProject = projectOverride || activeProject;
     if (!targetProject || !targetProject.localSourceAvailable) return;
@@ -773,6 +832,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
 
           {!activeProjectIsLocal && activeProject.images.length > 0 ? (
             <div className="admin-actions">
+              <button type="button" onClick={sortImagesByFilename}>按文件名排序</button>
               <button type="button" onClick={toggleSelectAllImages}>
                 {selectedImageIds.length === activeProject.images.length ? "取消全选" : "全选图片"}
               </button>
@@ -806,6 +866,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                     第 {imageIndex + 1} 张
                     {activeProject.coverSrc === image.src ? " · 当前封面" : ""}
                   </span>
+                  <span className="admin-note">{getSortableImageName(image)}</span>
                   {activeProjectIsLocal ? (
                     <span className="admin-note">导入后可在这里直接管理</span>
                   ) : (

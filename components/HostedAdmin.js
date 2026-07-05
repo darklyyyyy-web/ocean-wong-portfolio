@@ -455,12 +455,17 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
     const [movedImage] = reorderedImages.splice(currentIndex, 1);
     reorderedImages.splice(targetIndex, 0, movedImage);
 
+    await persistImageOrder(reorderedImages, "正在保存图片顺序...", "图片顺序已更新。");
+    router.refresh();
+  }
+
+  async function persistImageOrder(reorderedImages, loadingMessage, successMessage) {
     setProjects((current) => current.map((project) => (
       project.id === activeProjectId
         ? { ...project, images: reorderedImages }
         : project
     )));
-    setProjectStatus("正在保存图片顺序...");
+    setProjectStatus(loadingMessage);
 
     const response = await fetch("/api/admin/cms/image", {
       method: "POST",
@@ -481,7 +486,26 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
       return;
     }
 
-    setProjectStatus("图片顺序已更新。");
+    setProjectStatus(successMessage);
+  }
+
+  async function moveSelectedImages(position) {
+    if (!activeProject || activeProject.source === "local" || selectedImageIds.length === 0) {
+      return;
+    }
+
+    const selectedIdSet = new Set(selectedImageIds);
+    const selectedImages = activeProject.images.filter((image) => selectedIdSet.has(image.id));
+    const unselectedImages = activeProject.images.filter((image) => !selectedIdSet.has(image.id));
+    const reorderedImages = position === "top"
+      ? [...selectedImages, ...unselectedImages]
+      : [...unselectedImages, ...selectedImages];
+
+    await persistImageOrder(
+      reorderedImages,
+      position === "top" ? "正在把已选图片移到前面..." : "正在把已选图片移到后面...",
+      position === "top" ? "已把选中图片移到最前面。" : "已把选中图片移到最后面。"
+    );
     router.refresh();
   }
 
@@ -882,6 +906,8 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                       <button type="button" onClick={toggleSelectAllImages}>
                         {selectedImageIds.length === activeProject.images.length ? "取消全选" : "全选图片"}
                       </button>
+                      <button type="button" onClick={() => moveSelectedImages("top")} disabled={selectedImageIds.length === 0}>已选移到最前</button>
+                      <button type="button" onClick={() => moveSelectedImages("bottom")} disabled={selectedImageIds.length === 0}>已选移到最后</button>
                       <button type="button" onClick={() => setSelectedImageIds([])} disabled={selectedImageIds.length === 0}>清空选择</button>
                       <button type="button" onClick={deleteSelectedImages} disabled={selectedImageIds.length === 0}>
                         删除已选 {selectedImageIds.length > 0 ? `${selectedImageIds.length} 张` : ""}

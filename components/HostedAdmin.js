@@ -91,6 +91,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   const [loading, setLoading] = useState(!initialSiteContent);
   const activeProject = useMemo(() => projects.find((project) => project.id === activeProjectId), [projects, activeProjectId]);
   const activeProjectIsLocal = activeProject?.source === "local";
+  const canSyncFromWebsite = Boolean(activeProject?.localSourceAvailable);
   const projectSummary = useMemo(() => summarizeProjects(projects), [projects]);
   const totalImageCount = useMemo(() => projects.reduce((total, project) => total + (project.images?.length || 0), 0), [projects]);
   const categoryUsage = useMemo(() => {
@@ -438,9 +439,9 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
   }
 
   async function importProject() {
-    if (!activeProject || activeProject.source !== "local") return;
+    if (!activeProject || !activeProject.localSourceAvailable) return;
 
-    setProjectStatus(`正在把“${activeProject.title}”导入线上后台...`);
+    setProjectStatus(`正在同步“${activeProject.title}”的网站原图...`);
     const response = await fetch("/api/admin/cms/import", {
       method: "POST",
       credentials: "include",
@@ -456,7 +457,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
 
     await loadBootstrap();
     setActiveProjectId(data.projectId);
-    setProjectStatus("这个相册已经导入线上后台，现在可以直接改封面、顺序、图片数量和文字了。");
+    setProjectStatus("网站原图已经同步到线上后台，现在可以直接改封面、顺序、显示数量和文字了。");
   }
 
   function addCategory() {
@@ -703,11 +704,10 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
         <>
           <div className="admin-actions">
             <button type="button" onClick={createProject}>新建相册</button>
-            {activeProjectIsLocal ? (
-              <button type="button" className="primary" onClick={importProject}>导入到线上后台</button>
-            ) : (
+            {canSyncFromWebsite ? <button type="button" onClick={importProject}>{activeProjectIsLocal ? "导入网站原图" : "重新同步网站原图"}</button> : null}
+            {!activeProjectIsLocal ? (
               <button type="button" className="primary" onClick={() => saveProject()}>保存当前相册</button>
-            )}
+            ) : null}
             {activeProject && !activeProjectIsLocal ? <button type="button" onClick={deleteProject}>删除当前相册</button> : null}
           </div>
           <p className="admin-status">{projectStatus}</p>
@@ -729,8 +729,10 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                     <h2>相册信息</h2>
                     <p>
                       {activeProjectIsLocal
-                        ? "这个相册已经在网站前台显示，但还没接入线上后台。先点上方“导入到线上后台”，导入后就能在线改分类、封面、图片顺序和数量。"
-                        : "这里先决定相册属于哪个分类。以后你要改“婚礼跟拍”里的内容，主要就在这个区域和下面的图片库里操作。"}
+                        ? "这个相册已经在网站前台显示，但还没接入线上后台。先点上方“导入网站原图”，导入后就能在线改分类、封面、图片顺序和数量。"
+                        : canSyncFromWebsite
+                          ? "这里已经是线上可管理相册。如果你发现图片数量不对，点上方“重新同步网站原图”就会用网站现有原图重新生成完整图片列表。"
+                          : "这里先决定相册属于哪个分类。以后你要改“婚礼跟拍”里的内容，主要就在这个区域和下面的图片库里操作。"}
                     </p>
                   </div>
                   <div className="admin-form admin-form-grid">
@@ -783,7 +785,9 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                     <p>
                       {activeProjectIsLocal
                         ? "下面这些是网站当前正在使用的原始图片。导入后，这里会变成可直接操作的线上图库。"
-                        : "可以一次上传多张。每张图都支持上移、下移、设为封面和删除，前台瀑布流会按这里的顺序显示。"}
+                        : canSyncFromWebsite
+                          ? `这里现在显示的是线上可管理图片库。当前线上有 ${activeProject.images.length} 张，如果和网站原图数量不一致，可以点上方“重新同步网站原图”。`
+                          : "可以一次上传多张。每张图都支持上移、下移、设为封面和删除，前台瀑布流会按这里的顺序显示。"}
                     </p>
                   </div>
 

@@ -76,9 +76,13 @@ export default function HostedAdmin({ userEmail }) {
   async function loadBootstrap() {
     setLoading(true);
     try {
-      const response = await fetch("/api/admin/cms/bootstrap", { cache: "no-store" });
+      const response = await fetch("/api/admin/cms/bootstrap", {
+        cache: "no-store",
+        credentials: "include"
+      });
       if (!response.ok) {
-        throw new Error("load bootstrap failed");
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "读取后台内容失败。");
       }
 
       const data = await response.json();
@@ -87,9 +91,10 @@ export default function HostedAdmin({ userEmail }) {
       setActiveProjectId((current) => current || data.projects?.[0]?.id || "");
       setSiteStatus("网站设置已加载。");
       setProjectStatus(`已读取 ${data.projects?.length || 0} 个线上相册。`);
-    } catch {
-      setSiteStatus("读取失败，请刷新重试。");
-      setProjectStatus("读取失败，请刷新重试。");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "读取失败，请刷新重试。";
+      setSiteStatus(message);
+      setProjectStatus(message);
     } finally {
       setLoading(false);
     }
@@ -132,6 +137,7 @@ export default function HostedAdmin({ userEmail }) {
     setSiteStatus("正在保存网站设置...");
     const response = await fetch("/api/admin/cms/site", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: siteContent })
     });
@@ -165,6 +171,7 @@ export default function HostedAdmin({ userEmail }) {
     setProjectStatus("正在保存相册...");
     const response = await fetch("/api/admin/cms/project", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         project: isDraftProject(project)
@@ -206,7 +213,8 @@ export default function HostedAdmin({ userEmail }) {
     setProjectStatus("正在删除相册...");
 
     const response = await fetch(`/api/admin/cms/project?projectId=${encodeURIComponent(activeProjectId)}`, {
-      method: "DELETE"
+      method: "DELETE",
+      credentials: "include"
     });
 
     const data = await response.json();
@@ -235,6 +243,7 @@ export default function HostedAdmin({ userEmail }) {
 
     const response = await fetch("/api/admin/cms/upload", {
       method: "POST",
+      credentials: "include",
       body: formData
     });
 
@@ -253,6 +262,7 @@ export default function HostedAdmin({ userEmail }) {
   async function setCover(imageId) {
     const response = await fetch("/api/admin/cms/image", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "cover", projectId: activeProjectId, imageId })
     });
@@ -276,6 +286,7 @@ export default function HostedAdmin({ userEmail }) {
     setProjectStatus("正在删除图片...");
     const response = await fetch("/api/admin/cms/image", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "delete", imageId })
     });

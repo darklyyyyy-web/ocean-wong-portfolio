@@ -19,33 +19,26 @@ html {
 }
 
 body {
-  position: relative;
-  isolation: isolate;
   margin: 0;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 19% 27%, rgba(255, 255, 255, 0.036) 0 0.8px, transparent 1px),
+    radial-gradient(circle at 73% 61%, rgba(255, 255, 255, 0.028) 0 0.9px, transparent 1.4px),
+    radial-gradient(circle at 38% 74%, rgba(255, 255, 255, 0.022) 0 0.7px, transparent 1.1px),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.018) 0,
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 18%, transparent 82%, rgba(255, 255, 255, 0.02)),
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.028), transparent 42%);
+  background-size: 7px 7px, 11px 11px, 13px 13px, 100% 4px, 100% 100%, 100% 100%;
+  background-attachment: fixed;
   color: var(--ink);
   font-family: Arial, Helvetica, "Noto Sans SC", sans-serif;
   letter-spacing: 0;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.14;
-  mix-blend-mode: screen;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.18) 0 1px, transparent 1px),
-    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px),
-    linear-gradient(115deg, rgba(255, 255, 255, 0.06), transparent 38%, rgba(255, 255, 255, 0.04));
-  background-size: 3px 3px, 5px 5px, 100% 100%;
-}
-
-body > * {
-  position: relative;
-  z-index: 1;
 }
 
 img {

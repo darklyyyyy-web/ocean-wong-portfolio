@@ -17,8 +17,15 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json({
-    configured: true,
-    ...(await getHostedAdminBootstrap())
-  });
+  try {
+    return NextResponse.json({
+      configured: true,
+      ...(await getHostedAdminBootstrap())
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "后台内容读取失败。" },
+      { status: 500 }
+    );
+  }
 }

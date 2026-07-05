@@ -53,15 +53,19 @@ function isDraftProject(project) {
   return Boolean(project?.id && project.id.startsWith("draft-"));
 }
 
-export default function HostedAdmin({ userEmail }) {
+export default function HostedAdmin({ userEmail, initialSiteContent = null, initialProjects = [], initialStatus = "" }) {
   const router = useRouter();
   const [tab, setTab] = useState("site");
-  const [siteContent, setSiteContent] = useState(emptySiteContent());
-  const [projects, setProjects] = useState([]);
+  const [siteContent, setSiteContent] = useState(initialSiteContent || emptySiteContent());
+  const [projects, setProjects] = useState(initialProjects);
   const [activeProjectId, setActiveProjectId] = useState("");
-  const [siteStatus, setSiteStatus] = useState("正在读取网站设置...");
-  const [projectStatus, setProjectStatus] = useState("正在读取相册...");
-  const [loading, setLoading] = useState(true);
+  const [siteStatus, setSiteStatus] = useState(
+    initialStatus || (initialSiteContent ? "网站设置已加载。" : "正在读取网站设置...")
+  );
+  const [projectStatus, setProjectStatus] = useState(
+    initialStatus || (initialSiteContent ? `已读取 ${initialProjects.length || 0} 个线上相册。` : "正在读取相册...")
+  );
+  const [loading, setLoading] = useState(!initialSiteContent && !initialStatus);
   const activeProject = useMemo(() => projects.find((project) => project.id === activeProjectId), [projects, activeProjectId]);
   const categoryUsage = useMemo(() => {
     const usage = new Map();
@@ -101,8 +105,16 @@ export default function HostedAdmin({ userEmail }) {
   }
 
   useEffect(() => {
-    loadBootstrap();
+    if (!initialSiteContent && !initialStatus) {
+      loadBootstrap();
+    }
   }, []);
+
+  useEffect(() => {
+    if (!activeProjectId && projects[0]?.id) {
+      setActiveProjectId(projects[0].id);
+    }
+  }, [activeProjectId, projects]);
 
   function updateSiteSection(section, field, value) {
     setSiteContent((current) => ({

@@ -645,6 +645,7 @@ a {
 }
 
 .free-image img {
+  display: block;
   width: 100%;
   height: auto;
 }
@@ -810,6 +811,12 @@ a {
 .admin-actions button {
   min-height: 42px;
   padding: 0 18px;
+}
+
+.admin-actions button:disabled,
+.admin-library-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .admin-actions .primary {
@@ -1042,6 +1049,11 @@ a {
   overflow: hidden;
 }
 
+.admin-library-card.selected {
+  border-color: var(--ink);
+  background: rgba(243, 238, 228, 0.08);
+}
+
 .admin-library-thumb {
   aspect-ratio: 1;
   background: var(--soft);
@@ -1066,6 +1078,24 @@ a {
   color: var(--ink);
   cursor: pointer;
   font: inherit;
+}
+
+.admin-image-alt {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.admin-image-alt input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 9px 10px;
 }
 
 .admin-subsection {

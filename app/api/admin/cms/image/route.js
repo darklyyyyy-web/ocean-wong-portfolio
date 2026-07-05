@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deleteHostedImage, deleteHostedImages, reorderHostedProjectImages, reorderHostedProjectImagesByFilename, setHostedProjectCover } from "@/lib/hosted-cms";
+import { deleteHostedImage, deleteHostedImages, reorderHostedProjectImages, reorderHostedProjectImagesByFilename, setHostedProjectCover, updateHostedImageAlt } from "@/lib/hosted-cms";
 import { requireAdminApiUser } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
@@ -37,6 +37,19 @@ export async function POST(request) {
       return NextResponse.json({ ok: true, projectId });
     } catch (error) {
       return NextResponse.json({ error: error.message || "删除失败。" }, { status: 500 });
+    }
+  }
+
+  if (body?.action === "alt") {
+    if (!body.projectId || !body.imageId) {
+      return NextResponse.json({ error: "缺少图片说明参数。" }, { status: 400 });
+    }
+
+    try {
+      const image = await updateHostedImageAlt(body.projectId, body.imageId, body.alt);
+      return NextResponse.json({ ok: true, image });
+    } catch (error) {
+      return NextResponse.json({ error: error.message || "保存图片说明失败。" }, { status: 500 });
     }
   }
 

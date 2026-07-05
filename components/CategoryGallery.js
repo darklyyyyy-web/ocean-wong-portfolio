@@ -34,7 +34,13 @@ export default function CategoryGallery({ projects }) {
             <div className="free-gallery category-photo-flow">
               {project.images.map((image) => (
                 <figure className="free-image" key={image.id || image.src}>
-                  <img src={image.src} alt={image.alt} loading="lazy" />
+                  <img
+                    src={image.src}
+                    alt={image.alt}
+                    width={image.width}
+                    height={image.height}
+                    loading="lazy"
+                  />
                 </figure>
               ))}
             </div>
@@ -57,4 +63,3 @@ export default function CategoryGallery({ projects }) {
     </>
   );
 }
-

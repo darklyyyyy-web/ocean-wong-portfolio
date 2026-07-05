@@ -53,7 +53,13 @@ export default async function ProjectDetailPage({ params }) {
       <section className="free-gallery">
         {currentProject.images.map((image) => (
           <figure className="free-image" key={image.id || image.src}>
-            <img src={image.src} alt={image.alt} loading="lazy" />
+            <img
+              src={image.src}
+              alt={image.alt}
+              width={image.width}
+              height={image.height}
+              loading="lazy"
+            />
           </figure>
         ))}
       </section>

@@ -326,6 +326,46 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
     )));
   }
 
+  function updateImageAlt(imageId, value) {
+    setProjects((current) => current.map((project) => (
+      project.id === activeProjectId
+        ? {
+            ...project,
+            images: project.images.map((image) => (
+              image.id === imageId ? { ...image, alt: value } : image
+            ))
+          }
+        : project
+    )));
+  }
+
+  async function saveImageAlt(imageId, value) {
+    if (!activeProject || activeProject.source === "local") {
+      return;
+    }
+
+    const response = await fetch("/api/admin/cms/image", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "alt",
+        projectId: activeProject.id,
+        imageId,
+        alt: value
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      setProjectStatus(data.error || "图片说明保存失败。");
+      return;
+    }
+
+    setProjectStatus("图片说明已保存。");
+    router.refresh();
+  }
+
   async function saveSite() {
     setSiteStatus("正在保存网站设置...");
     const renamePairs = savedSiteContent?.categories
@@ -922,7 +962,7 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
 
           <div className="admin-library">
             {activeProject.images.map((image, imageIndex) => (
-              <article className="admin-library-card" key={image.id}>
+              <article className={`admin-library-card ${selectedImageIds.includes(image.id) ? "selected" : ""}`} key={image.id}>
                 <div className="admin-library-thumb">
                   <img src={image.src} alt={image.alt} />
                 </div>
@@ -946,6 +986,14 @@ export default function HostedAdmin({ userEmail, initialSiteContent = null, init
                     <span className="admin-note">导入后可在这里直接管理</span>
                   ) : (
                     <>
+                      <label className="admin-image-alt">
+                        图片说明
+                        <input
+                          value={image.alt || ""}
+                          onChange={(event) => updateImageAlt(image.id, event.target.value)}
+                          onBlur={(event) => saveImageAlt(image.id, event.target.value)}
+                        />
+                      </label>
                       <button type="button" onClick={() => moveImage(image.id, -1)} disabled={imageIndex === 0}>上移</button>
                       <button type="button" onClick={() => moveImage(image.id, 1)} disabled={imageIndex === activeProject.images.length - 1}>下移</button>
                       <button type="button" onClick={() => setCover(image.id)}>设为封面</button>
